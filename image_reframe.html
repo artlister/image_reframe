@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artlist Reframe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .logo-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #FFC107 0%, #FF9800 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 2rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #FFC107 0%, #FF9800 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .upload-section {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #e0e0e0;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 2px dashed #333;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #0a0a0a;
+        }
+
+        .upload-area:hover {
+            border-color: #FFC107;
+            background: #1a1a1a;
+        }
+
+        .upload-area.dragover {
+            border-color: #FFC107;
+            background: #1a1a1a;
+            transform: scale(1.02);
+        }
+
+        .result-tile img {
+            cursor: grab;
+        }
+
+        .result-tile img:active {
+            cursor: grabbing;
+        }
+
+        .history-image-wrapper img {
+            cursor: grab;
+        }
+
+        .history-image-wrapper img:active {
+            cursor: grabbing;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .canvas-container {
+            position: relative;
+            display: none;
+            margin-top: 1.5rem;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0a0a0a;
+        }
+
+        .canvas-container.active {
+            display: block;
+        }
+
+        #imageCanvas {
+            display: block;
+            max-width: 100%;
+            cursor: crosshair;
+        }
+
+        .selection-rectangle {
+            position: absolute;
+            border: 3px solid #FFC107;
+            background: rgba(255, 193, 7, 0.1);
+            cursor: move;
+            display: none;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+        }
+
+        .selection-rectangle.active {
+            display: block;
+        }
+
+        .resize-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #FFC107;
+            border: 2px solid #0a0a0a;
+            border-radius: 50%;
+            z-index: 10;
+        }
+
+        .resize-handle.nw { top: -7px; left: -7px; cursor: nw-resize; }
+        .resize-handle.ne { top: -7px; right: -7px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -7px; left: -7px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -7px; right: -7px; cursor: se-resize; }
+
+        .controls {
+            display: none;
+            margin-top: 1.5rem;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .controls.active {
+            display: flex;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 1rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #FFC107 0%, #FF9800 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 10px 25px rgba(255, 193, 7, 0.3);
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #e0e0e0;
+            border: 2px solid #444;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #444;
+            border-color: #FFC107;
+        }
+
+        .btn.loading {
+            position: relative;
+            color: transparent;
+        }
+
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            margin-left: -10px;
+            margin-top: -10px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .result-placeholder {
+            border: 2px dashed #333;
+            border-radius: 12px;
+            padding: 4rem 2rem;
+            text-align: center;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .result-images-container {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .result-images-container.active {
+            display: grid;
+        }
+
+        .result-tile {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .result-tile:hover {
+            border-color: #FFC107;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(255, 193, 7, 0.2);
+        }
+
+        .result-tile img {
+            width: 100%;
+            display: block;
+        }
+
+        .result-tile-placeholder {
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .result-tile.loading .result-tile-placeholder {
+            position: relative;
+        }
+
+        .result-tile.loading .result-tile-placeholder::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255, 193, 7, 0.3);
+            border-top-color: #FFC107;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .result-label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #FFC107;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .history-section {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .history-item {
+            background: #0a0a0a;
+            border-radius: 12px;
+            padding: 1rem;
+            border: 2px solid #333;
+            transition: all 0.3s;
+        }
+
+        .history-item:hover {
+            border-color: #FFC107;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(255, 193, 7, 0.2);
+        }
+
+        .history-images {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .history-image-wrapper {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            background: #1a1a1a;
+            cursor: pointer;
+        }
+
+        .history-image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .history-label {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #FFC107;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            flex: 1;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: #666;
+            padding: 3rem 1rem;
+            font-size: 1.1rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            color: white;
+            font-size: 3rem;
+            font-weight: 300;
+            cursor: pointer;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .lightbox-close:hover {
+            background: rgba(255, 193, 7, 0.3);
+            transform: rotate(90deg);
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .logo-text {
+                font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1.5rem;
+            }
+
+            .history-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .result-images-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-logo">
+            <h1>
+                <div class="logo-text">Artlist</div>
+                <div class="subtitle">Reframe</div>
+            </h1>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2 class="section-title">Upload & Select Area</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📸</div>
+                    <div class="upload-text">Click or drag image here</div>
+                    <div style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">💡 Drag result images back to refine</div>
+                </div>
+
+                <input type="file" id="fileInput" accept="image/*">
+
+                <div class="canvas-container" id="canvasContainer">
+                    <canvas id="imageCanvas"></canvas>
+                    <div class="selection-rectangle" id="selectionRect">
+                        <div class="resize-handle nw" data-handle="nw"></div>
+                        <div class="resize-handle ne" data-handle="ne"></div>
+                        <div class="resize-handle sw" data-handle="sw"></div>
+                        <div class="resize-handle se" data-handle="se"></div>
+                    </div>
+                </div>
+
+                <div class="controls" id="controls">
+                    <button class="btn btn-secondary" id="clearBtn">Clear Selection</button>
+                    <button class="btn btn-primary" id="reframeBtn" disabled>🎬 Reframe</button>
+                </div>
+            </div>
+
+            <div class="result-section">
+                <h2 class="section-title">Result</h2>
+                
+                <div class="result-placeholder" id="resultPlaceholder">
+                    Select an area and click Reframe to generate
+                </div>
+
+                <div class="result-images-container" id="resultContainer">
+                    <div class="result-tile" id="resultTile1">
+                        <div class="result-tile-placeholder">Variation 1</div>
+                        <img style="display: none;" alt="Result 1">
+                        <div class="result-label">Variation 1</div>
+                    </div>
+                    <div class="result-tile" id="resultTile2">
+                        <div class="result-tile-placeholder">Variation 2</div>
+                        <img style="display: none;" alt="Result 2">
+                        <div class="result-label">Variation 2</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h2 class="section-title">Generation History</h2>
+            
+            <div class="empty-history" id="emptyHistory">
+                No generations yet. Upload an image and reframe to get started!
+            </div>
+
+            <div class="history-grid" id="historyGrid"></div>
+        </div>
+    </div>
+
+    <div class="lightbox" id="lightbox">
+        <div class="lightbox-close" id="lightboxClose">×</div>
+        <img id="lightboxImage" alt="Lightbox view">
+    </div>
+
+    <script type="module">
+        console.log('🎬 Artlist Reframe Loading...');
+        
+        // Import FAL client (same pattern as image_describer)
+        const falModule = await import('https://esm.sh/@fal-ai/client@1.1.0');
+        const fal = falModule.fal || falModule.default || falModule;
+
+        console.log('✓ FAL client loaded');
+
+        // Initialize FAL with API key
+        const FAL_KEY = "d11911c9-4db0-49e0-a9b1-9558d98dc26c:04fac99b361e537abbecdd98cdfd3c8e"; // Replace with your FAL API key
+        fal.config({
+            credentials: FAL_KEY
+        });
+
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+        const selectionRect = document.getElementById('selectionRect');
+        const controls = document.getElementById('controls');
+        const clearBtn = document.getElementById('clearBtn');
+        const reframeBtn = document.getElementById('reframeBtn');
+        const resultPlaceholder = document.getElementById('resultPlaceholder');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultTile1 = document.getElementById('resultTile1');
+        const resultTile2 = document.getElementById('resultTile2');
+        const historyGrid = document.getElementById('historyGrid');
+        const emptyHistory = document.getElementById('emptyHistory');
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImage = document.getElementById('lightboxImage');
+        const lightboxClose = document.getElementById('lightboxClose');
+
+        // State
+        let currentImage = null;
+        let currentImageSrc = null;
+        let isDrawing = false;
+        let isDragging = false;
+        let isResizing = false;
+        let resizeHandle = null;
+        let startX, startY;
+        let dragOffsetX, dragOffsetY;
+        let selection = { x: 0, y: 0, width: 0, height: 0 };
+        let generationHistory = [];
+
+        console.log('✓ Script initialized');
+
+        // Upload handlers
+        uploadArea.addEventListener('click', () => {
+            console.log('Upload area clicked');
+            fileInput.click();
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            // Check if it's an image URL being dragged from results
+            const imageUrl = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+            
+            if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
+                // It's a URL from our results - load it
+                console.log('Loading image from URL:', imageUrl);
+                loadImageFromUrl(imageUrl);
+            } else {
+                // It's a file drop from computer
+                const file = e.dataTransfer.files[0];
+                console.log('File dropped:', file);
+                if (file && file.type.startsWith('image/')) {
+                    loadImage(file);
+                }
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            console.log('File selected:', file);
+            if (file) {
+                loadImage(file);
+            }
+        });
+
+        function loadImage(file) {
+            console.log('Loading image:', file.name);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    console.log('Image loaded:', img.width, 'x', img.height);
+                    currentImage = img;
+                    currentImageSrc = e.target.result;
+                    
+                    canvasContainer.classList.add('active');
+                    
+                    setTimeout(() => {
+                        const containerWidth = canvasContainer.clientWidth || 600;
+                        let displayWidth = img.width;
+                        let displayHeight = img.height;
+                        
+                        if (img.width > containerWidth) {
+                            const scale = containerWidth / img.width;
+                            displayWidth = containerWidth;
+                            displayHeight = img.height * scale;
+                        }
+                        
+                        canvas.width = displayWidth;
+                        canvas.height = displayHeight;
+                        
+                        ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+                        
+                        controls.classList.add('active');
+                        selection = { x: 0, y: 0, width: 0, height: 0 };
+                        selectionRect.classList.remove('active');
+                        reframeBtn.disabled = true;
+                        
+                        console.log('Canvas ready:', displayWidth, 'x', displayHeight);
+                    }, 10);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadImageFromUrl(url) {
+            console.log('Loading image from URL:', url);
+            const img = new Image();
+            img.crossOrigin = 'anonymous'; // Enable CORS for FAL images
+            
+            img.onload = () => {
+                console.log('Image loaded from URL:', img.width, 'x', img.height);
+                currentImage = img;
+                currentImageSrc = url;
+                
+                canvasContainer.classList.add('active');
+                
+                setTimeout(() => {
+                    const containerWidth = canvasContainer.clientWidth || 600;
+                    let displayWidth = img.width;
+                    let displayHeight = img.height;
+                    
+                    if (img.width > containerWidth) {
+                        const scale = containerWidth / img.width;
+                        displayWidth = containerWidth;
+                        displayHeight = img.height * scale;
+                    }
+                    
+                    canvas.width = displayWidth;
+                    canvas.height = displayHeight;
+                    
+                    ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+                    
+                    controls.classList.add('active');
+                    selection = { x: 0, y: 0, width: 0, height: 0 };
+                    selectionRect.classList.remove('active');
+                    reframeBtn.disabled = true;
+                    
+                    console.log('Canvas ready:', displayWidth, 'x', displayHeight);
+                }, 10);
+            };
+            
+            img.onerror = () => {
+                console.error('Failed to load image from URL');
+                alert('Failed to load image. The URL may not support cross-origin requests.');
+            };
+            
+            img.src = url;
+        }
+
+        // Canvas drawing handlers
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (isInsideSelection(x, y)) {
+                isDragging = true;
+                dragOffsetX = x - selection.x;
+                dragOffsetY = y - selection.y;
+                console.log('Started dragging selection');
+            } else {
+                isDrawing = true;
+                startX = x;
+                startY = y;
+                selection = { x, y, width: 0, height: 0 };
+                selectionRect.classList.remove('active');
+                console.log('Started drawing selection');
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (isDrawing) {
+                selection.width = x - startX;
+                selection.height = y - startY;
+                
+                if (selection.width < 0) {
+                    selection.x = x;
+                    selection.width = startX - x;
+                } else {
+                    selection.x = startX;
+                }
+                
+                if (selection.height < 0) {
+                    selection.y = y;
+                    selection.height = startY - y;
+                } else {
+                    selection.y = startY;
+                }
+                
+                updateSelectionRect();
+            } else if (isDragging) {
+                selection.x = x - dragOffsetX;
+                selection.y = y - dragOffsetY;
+                
+                selection.x = Math.max(0, Math.min(selection.x, canvas.width - selection.width));
+                selection.y = Math.max(0, Math.min(selection.y, canvas.height - selection.height));
+                
+                updateSelectionRect();
+            } else if (isResizing) {
+                resizeSelection(x, y);
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (isDrawing && selection.width > 10 && selection.height > 10) {
+                selectionRect.classList.add('active');
+                reframeBtn.disabled = false;
+                console.log('Selection created:', selection);
+            }
+            isDrawing = false;
+            isDragging = false;
+            isResizing = false;
+            resizeHandle = null;
+        });
+
+        // Resize handle handlers
+        document.querySelectorAll('.resize-handle').forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                isResizing = true;
+                resizeHandle = handle.dataset.handle;
+                
+                const rect = canvas.getBoundingClientRect();
+                startX = e.clientX - rect.left;
+                startY = e.clientY - rect.top;
+                
+                console.log('Started resizing with handle:', resizeHandle);
+            });
+        });
+
+        function resizeSelection(x, y) {
+            const dx = x - startX;
+            const dy = y - startY;
+            
+            const minSize = 20;
+            
+            switch (resizeHandle) {
+                case 'nw':
+                    const newXnw = selection.x + dx;
+                    const newYnw = selection.y + dy;
+                    const newWidthnw = selection.width - dx;
+                    const newHeightnw = selection.height - dy;
+                    
+                    if (newWidthnw >= minSize && newXnw >= 0) {
+                        selection.x = newXnw;
+                        selection.width = newWidthnw;
+                        startX = x;
+                    }
+                    if (newHeightnw >= minSize && newYnw >= 0) {
+                        selection.y = newYnw;
+                        selection.height = newHeightnw;
+                        startY = y;
+                    }
+                    break;
+                    
+                case 'ne':
+                    const newWidthne = selection.width + dx;
+                    const newYne = selection.y + dy;
+                    const newHeightne = selection.height - dy;
+                    
+                    if (newWidthne >= minSize && selection.x + newWidthne <= canvas.width) {
+                        selection.width = newWidthne;
+                        startX = x;
+                    }
+                    if (newHeightne >= minSize && newYne >= 0) {
+                        selection.y = newYne;
+                        selection.height = newHeightne;
+                        startY = y;
+                    }
+                    break;
+                    
+                case 'sw':
+                    const newXsw = selection.x + dx;
+                    const newWidthsw = selection.width - dx;
+                    const newHeightsw = selection.height + dy;
+                    
+                    if (newWidthsw >= minSize && newXsw >= 0) {
+                        selection.x = newXsw;
+                        selection.width = newWidthsw;
+                        startX = x;
+                    }
+                    if (newHeightsw >= minSize && selection.y + newHeightsw <= canvas.height) {
+                        selection.height = newHeightsw;
+                        startY = y;
+                    }
+                    break;
+                    
+                case 'se':
+                    const newWidthse = selection.width + dx;
+                    const newHeightse = selection.height + dy;
+                    
+                    if (newWidthse >= minSize && selection.x + newWidthse <= canvas.width) {
+                        selection.width = newWidthse;
+                        startX = x;
+                    }
+                    if (newHeightse >= minSize && selection.y + newHeightse <= canvas.height) {
+                        selection.height = newHeightse;
+                        startY = y;
+                    }
+                    break;
+            }
+            
+            updateSelectionRect();
+        }
+
+        function isInsideSelection(x, y) {
+            return x >= selection.x && x <= selection.x + selection.width &&
+                   y >= selection.y && y <= selection.y + selection.height;
+        }
+
+        function updateSelectionRect() {
+            selectionRect.style.left = selection.x + 'px';
+            selectionRect.style.top = selection.y + 'px';
+            selectionRect.style.width = selection.width + 'px';
+            selectionRect.style.height = selection.height + 'px';
+        }
+
+        clearBtn.addEventListener('click', () => {
+            selection = { x: 0, y: 0, width: 0, height: 0 };
+            selectionRect.classList.remove('active');
+            reframeBtn.disabled = true;
+            console.log('Selection cleared');
+        });
+
+        // Reframe button handler
+        reframeBtn.addEventListener('click', async () => {
+            if (!currentImage || !selection.width || !selection.height) return;
+
+            reframeBtn.disabled = true;
+            reframeBtn.classList.add('loading');
+            resultPlaceholder.textContent = 'Generating reframe...';
+            resultPlaceholder.style.display = 'block';
+            resultContainer.classList.remove('active');
+
+            [resultTile1, resultTile2].forEach(tile => {
+                const img = tile.querySelector('img');
+                const placeholder = tile.querySelector('.result-tile-placeholder');
+                img.style.display = 'none';
+                img.src = '';
+                placeholder.style.display = 'flex';
+                placeholder.textContent = 'Generating...';
+                tile.classList.add('loading');
+                tile.onclick = null;
+            });
+
+            try {
+                console.log('=== STARTING REFRAME ===');
+                
+                // Calculate selection coordinates relative to original image
+                const scaleX = currentImage.width / canvas.width;
+                const scaleY = currentImage.height / canvas.height;
+                
+                const cropData = {
+                    x: Math.round(selection.x * scaleX),
+                    y: Math.round(selection.y * scaleY),
+                    width: Math.round(selection.width * scaleX),
+                    height: Math.round(selection.height * scaleY)
+                };
+
+                console.log('Crop data:', cropData);
+
+                // Create cropped canvas with the yellow square selection
+                const cropCanvas = document.createElement('canvas');
+                cropCanvas.width = cropData.width;
+                cropCanvas.height = cropData.height;
+                const cropCtx = cropCanvas.getContext('2d');
+                
+                // Draw only the selected portion
+                cropCtx.drawImage(
+                    currentImage,
+                    cropData.x, cropData.y, cropData.width, cropData.height,
+                    0, 0, cropData.width, cropData.height
+                );
+
+                // Convert cropped canvas to blob
+                const croppedBlob = await new Promise(resolve => {
+                    cropCanvas.toBlob(resolve, 'image/jpeg', 0.95);
+                });
+
+                console.log('Uploading cropped image to FAL...');
+                const file = new File([croppedBlob], 'cropped.jpg', { type: 'image/jpeg' });
+                const imageUrl = await fal.storage.upload(file);
+                console.log('✓ Cropped image uploaded:', imageUrl);
+
+                // Show result container
+                resultContainer.classList.add('active');
+                resultPlaceholder.style.display = 'none';
+
+                console.log('Starting workflow stream...');
+                const stream = await fal.stream("workflows/Content-vlm7ci7l2p91/colby-scene-reframe", {
+                    input: {
+                        cropped_image: imageUrl
+                    }
+                });
+
+                console.log('Stream created, consuming events...');
+                
+                for await (const event of stream) {
+                    console.log('Stream event:', event);
+                }
+
+                const result = await stream.done();
+                console.log('✓ Final result:', JSON.stringify(result, null, 2));
+
+                const generatedImages = [];
+                
+                // Extract images from result
+                if (result && typeof result === 'object') {
+                    const imageArrays = [
+                        result.output?.images || result.images,
+                        result.output?.images_2 || result.images_2
+                    ];
+                    
+                    const tiles = [resultTile1, resultTile2];
+                    
+                    imageArrays.forEach((imageArray, index) => {
+                        if (imageArray && Array.isArray(imageArray) && imageArray.length > 0) {
+                            const imageField = imageArray[0];
+                            const imageUrl = typeof imageField === 'object' ? imageField.url : imageField;
+                            
+                            if (imageUrl) {
+                                generatedImages.push(imageUrl);
+                                
+                                const tile = tiles[index];
+                                const img = tile.querySelector('img');
+                                const placeholder = tile.querySelector('.result-tile-placeholder');
+                                
+                                img.src = imageUrl;
+                                img.style.display = 'block';
+                                placeholder.style.display = 'none';
+                                tile.classList.remove('loading');
+                                
+                                // Make clickable for lightbox
+                                tile.onclick = () => openLightbox(imageUrl);
+                                
+                                // Make draggable
+                                img.draggable = true;
+                                img.ondragstart = (e) => {
+                                    e.dataTransfer.effectAllowed = 'copy';
+                                    e.dataTransfer.setData('text/uri-list', imageUrl);
+                                    e.dataTransfer.setData('text/plain', imageUrl);
+                                    console.log('Dragging result image:', imageUrl);
+                                };
+                                
+                                console.log(`✓ Variation ${index + 1} displayed:`, imageUrl);
+                            }
+                        } else {
+                            console.warn(`⚠ No image found in variation ${index + 1}`);
+                            const tile = tiles[index];
+                            const placeholder = tile.querySelector('.result-tile-placeholder');
+                            placeholder.textContent = 'Failed';
+                            tile.classList.remove('loading');
+                        }
+                    });
+                }
+
+                if (generatedImages.length > 0) {
+                    addToHistory(currentImageSrc, generatedImages, cropData);
+                    console.log('✓ Added to history. Generated images:', generatedImages);
+                } else {
+                    throw new Error('No images in result');
+                }
+
+            } catch (error) {
+                console.error('✗ Error:', error);
+                console.error('✗ Error stack:', error.stack);
+                resultPlaceholder.textContent = `Error: ${error.message}`;
+                resultPlaceholder.style.display = 'block';
+                alert(`Failed to reframe: ${error.message}\n\nCheck console for details.`);
+                
+                [resultTile1, resultTile2].forEach(tile => {
+                    const placeholder = tile.querySelector('.result-tile-placeholder');
+                    placeholder.textContent = 'Error';
+                    tile.classList.remove('loading');
+                });
+            } finally {
+                reframeBtn.disabled = false;
+                reframeBtn.classList.remove('loading');
+            }
+        });
+
+        function addToHistory(sourceImage, resultImages, cropData) {
+            const historyItem = {
+                id: Date.now(),
+                sourceImage,
+                resultImages: Array.isArray(resultImages) ? resultImages : [resultImages],
+                cropData,
+                timestamp: new Date()
+            };
+
+            generationHistory.unshift(historyItem);
+            renderHistory();
+        }
+
+        function renderHistory() {
+            if (generationHistory.length === 0) {
+                emptyHistory.style.display = 'block';
+                historyGrid.style.display = 'none';
+                return;
+            }
+
+            emptyHistory.style.display = 'none';
+            historyGrid.style.display = 'grid';
+            historyGrid.innerHTML = '';
+
+            generationHistory.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                
+                let resultImagesHtml = '';
+                item.resultImages.forEach((imgUrl, index) => {
+                    resultImagesHtml += `
+                        <div class="history-image-wrapper" data-src="${imgUrl}">
+                            <img src="${imgUrl}" alt="Result ${index + 1}">
+                            <div class="history-label">Result ${index + 1}</div>
+                        </div>
+                    `;
+                });
+                
+                div.innerHTML = `
+                    <div class="history-images">
+                        <div class="history-image-wrapper" data-src="${item.sourceImage}">
+                            <img src="${item.sourceImage}" alt="Source">
+                            <div class="history-label">Source</div>
+                        </div>
+                        ${resultImagesHtml}
+                    </div>
+                    <div class="history-actions">
+                        <button class="btn btn-secondary btn-small view-btn">👁️ View</button>
+                        <button class="btn btn-primary btn-small regenerate-btn">🔄 Regenerate</button>
+                    </div>
+                `;
+
+                div.querySelector('.view-btn').addEventListener('click', () => {
+                    openLightbox(item.resultImages[0]);
+                });
+
+                div.querySelector('.regenerate-btn').addEventListener('click', async () => {
+                    const btn = div.querySelector('.regenerate-btn');
+                    btn.disabled = true;
+                    btn.classList.add('loading');
+
+                    try {
+                        const img = new Image();
+                        await new Promise((resolve, reject) => {
+                            img.onload = resolve;
+                            img.onerror = reject;
+                            img.src = item.sourceImage;
+                        });
+                        
+                        const cropCanvas = document.createElement('canvas');
+                        const cropCtx = cropCanvas.getContext('2d');
+                        cropCanvas.width = item.cropData.width;
+                        cropCanvas.height = item.cropData.height;
+                        
+                        cropCtx.drawImage(
+                            img,
+                            item.cropData.x, item.cropData.y, item.cropData.width, item.cropData.height,
+                            0, 0, item.cropData.width, item.cropData.height
+                        );
+                        
+                        const croppedBlob = await new Promise(resolve => {
+                            cropCanvas.toBlob(resolve, 'image/jpeg', 0.95);
+                        });
+                        
+                        const croppedFile = new File([croppedBlob], 'cropped.jpg', { type: 'image/jpeg' });
+                        const croppedImageUrl = await fal.storage.upload(croppedFile);
+
+                        const stream = await fal.stream("workflows/Content-vlm7ci7l2p91/colby-scene-reframe", {
+                            input: {
+                                cropped_image: croppedImageUrl
+                            }
+                        });
+
+                        for await (const event of stream) {
+                            console.log('Regeneration stream event:', event);
+                        }
+
+                        const result = await stream.done();
+                        console.log('✓ Regeneration result:', result);
+
+                        let resultImages = [];
+                        if (result && typeof result === 'object') {
+                            const imageArrays = [
+                                result.output?.images || result.images,
+                                result.output?.images_2 || result.images_2
+                            ];
+                            
+                            imageArrays.forEach(imageArray => {
+                                if (imageArray && Array.isArray(imageArray) && imageArray.length > 0) {
+                                    const imageField = imageArray[0];
+                                    const imageUrl = typeof imageField === 'object' ? imageField.url : imageField;
+                                    if (imageUrl) resultImages.push(imageUrl);
+                                }
+                            });
+                        }
+                        
+                        if (resultImages.length > 0) {
+                            item.resultImages = resultImages;
+                            renderHistory();
+                        }
+
+                    } catch (error) {
+                        console.error('✗ Regeneration error:', error);
+                        alert(`Failed to regenerate: ${error.message}`);
+                    } finally {
+                        btn.disabled = false;
+                        btn.classList.remove('loading');
+                    }
+                });
+
+                div.querySelectorAll('.history-image-wrapper').forEach(wrapper => {
+                    wrapper.addEventListener('click', () => {
+                        openLightbox(wrapper.dataset.src);
+                    });
+                    
+                    // Make images draggable
+                    const img = wrapper.querySelector('img');
+                    if (img) {
+                        img.draggable = true;
+                        img.ondragstart = (e) => {
+                            e.stopPropagation();
+                            e.dataTransfer.effectAllowed = 'copy';
+                            e.dataTransfer.setData('text/uri-list', wrapper.dataset.src);
+                            e.dataTransfer.setData('text/plain', wrapper.dataset.src);
+                            console.log('Dragging history image:', wrapper.dataset.src);
+                        };
+                    }
+                });
+
+                historyGrid.appendChild(div);
+            });
+        }
+
+        function openLightbox(imageSrc) {
+            lightboxImage.src = imageSrc;
+            lightbox.classList.add('active');
+        }
+
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox || e.target === lightboxClose) {
+                lightbox.classList.remove('active');
+            }
+        });
+
+        console.log('✓ All event listeners registered');
+    </script>
+</body>
+</html>
